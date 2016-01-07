@@ -18,59 +18,59 @@
 #include <MickyTools/OrderSendMarket.mqh>
 
 //
-// -------- Konfigurace - externi --------
+// -------- Configuration - external --------
 //
 
-// Koeficient pro urcovani velikosti TakeProfitu
+// Ratio to calculate Take profit
 extern double takeProfitKoefLong = 22;
 extern double takeProfitKoefShort = 64;
 
 //
-// -------- Konfigurace - interni --------
+// -------- Configuration - internal --------
 //
 
 double minimumTradeAmount = 0.01;
 
-// DEMO ucty zacinaji 1, ostre zacinaji 2
+// DEMO accounts starts with 1, LIVE accounts starts with 2
 int expertMagicNumber = 10010142;
 
-// maximalni mozna ztrata v USD
+// maximal loss in USD
 double maxUsdLoss = 30;
 
-// pocet riskovanych procent z uctu
+// maximal risked percent of an account 
 double mmFF_maxLossPercent = 1.5;
 
-// konfigurace pro vypocet urovni
+// levels calculation configuration
 extern int levelMinimumBars = 5;
 extern int maxChangeInPips = 20;
 
    
 //
-// -------- Pomocne promenne --------
+// -------- Other variables --------
 //
 
 TradeManagement *tradeManagement;
 
 
 //
-// -------- Vykonna cast --------
+// -------- Program --------
 //
 int OnInit()
 {
 
    if (!isEnabledSymbol())
    {
-      Print("Nepovoleny symbol k obchodovani ('"+Symbol()+"')");
+      Print("Unknown symbol to trade ('"+Symbol()+"')");
       return(INIT_PARAMETERS_INCORRECT);
    }
    if (IsDemo() && !(expertMagicNumber>=10000000 && expertMagicNumber<=19999999))
    {  
-      Print("Spatne expertMagicNumber pro typ uctu (demo)");
+      Print("Invalid expertMagicNumber for demo account");
       return(INIT_PARAMETERS_INCORRECT);
    }
    if (!IsDemo() && !(expertMagicNumber>=20000000 && expertMagicNumber<=29999999))
    {  
-      Print("Spatne expertMagicNumber pro typ uctu (real)");
+      Print("Invalid expertMagicNumber for live account");
       return(INIT_PARAMETERS_INCORRECT);
    }
    
@@ -93,10 +93,10 @@ void OnTick()
    static SRLevel *srLevel_support_lastDrawn = NULL;
    static SRLevel *srLevel_resistance_lastDrawn = NULL;
          
-   // Urcuje sentiment pro dny den - pro support se pricita 1, pro resistenci se odecita 1
+   // Market sentiment - support adds 1, resistance subtracts 1
    static int SRLevelSentiment = 0;
          
-   // kontrola jiz ukoncenych obchodu
+   // checking closes trades
    tradeManagement.checkTrades();
       
    if (isNewBar())
@@ -106,10 +106,10 @@ void OnTick()
          SRLevelSentiment = 0;
       }
       
-      // rozdil lows dvou predchozich svicek
+      // make a subtract of low's two previous candles
       double lowDif = priceToPips(MathAbs(Low[1] - Low[2]));
       
-      // rozdil highs dvou predchozich svicek
+      // make a subtract of high's two previous candles
       double highDif = priceToPips(MathAbs(High[1] - High[2]));
       
       
@@ -123,7 +123,7 @@ void OnTick()
       Trade  *addedTrade = NULL;
       
       //
-      // Zpracujeme support
+      // Processing a support
       //
       if (srLevel_support.isInLevel(Low[1]))
       {  
@@ -142,24 +142,24 @@ void OnTick()
                              
             if (tradeManagement.getCountOfTrades()==0 || (SRLevel::areDisjunctive(srLevel_support, srLevel_resistance_lastDrawn) && tradeManagement.selectLastTrade() && OrderType() == OP_SELL))
             {                           
-               // Otevreme novy LONG obchod
+               // Opening a new LONG trade
                if (canEnterATrade(SRLevelSentiment, Close[1], srLevel_support))
                {    
                   if (tradeManagement.isOpenedLastTrade())
                   {
-                     // Zavreme naposledy otevreny obchod    
+                     // Closing last closed trade
                      tradeManagement.closeLastTrade();
                   }
                
                   //           
-                  // Vypocet stopLoss, takeProfit a volume
+                  // Calculating stopLoss, takeProfit and volume
                   //       
                   stopLoss = Ask - NormalizeDouble(getStopLossSizeLongCurrent()*Point(),Digits);
                   //takeProfit = Ask + NormalizeDouble(getTakeProfitSizeLongCurrent()*Point(),Digits);
                   takeProfit = Ask + NormalizeDouble(getTakeProfitKoefLongCurrent()*(Ask-srLevel_support.levelMin),Digits);
                   //takeProfit = Ask + NormalizeDouble(takeProfitKoefLong*(Ask-srLevel_support.levelMin),Digits);
-
-                  // Spocitame, kde mame locknout obchod                  
+              
+                  // Calculating where trade shoud be locked
                   tradeLockProfitAt = generateTradesLockArray(TRADE_LONG);
                                                     
                   if (stopLoss>0 && Ask-stopLoss < stopLevel*Point)
@@ -175,7 +175,7 @@ void OnTick()
                   volume = calculatePositionSizeWrapper(stopLoss, maxUsdLoss);
                   
                   //
-                  // Otevreni obchodu
+                  // Opening a trade
                   //
                   RefreshRates();
                   addedTrade = tradeManagement.addTrade(TRADE_LONG, volume, Ask, stopLoss, takeProfit, NULL);
@@ -195,7 +195,7 @@ void OnTick()
       
       
       //
-      // Zpracujeme resistenci
+      // Processing a resistance
       //
       if (srLevel_resistance.isInLevel(High[1]))
       {  
@@ -214,24 +214,24 @@ void OnTick()
                                       
             if (tradeManagement.getCountOfTrades()==0 || (SRLevel::areDisjunctive(srLevel_resistance, srLevel_support_lastDrawn) && tradeManagement.selectLastTrade() && OrderType() == OP_BUY))
             {                           
-               // Otevreme novy SHORT obchod
+               // Opening a new SHORT trade
                if (canEnterATrade(SRLevelSentiment, Close[1], srLevel_resistance))
                {      
                   if (tradeManagement.isOpenedLastTrade())
                   {
-                     // Zavreme naposledy otevreny obchod
+                     // Closing last closed trade
                      tradeManagement.closeLastTrade();
                   }
                
                   //           
-                  // Vypocet stopLoss, takeProfit a volume
+                  // Calculating stopLoss, takeProfit and volume
                   //               
                   stopLoss = Bid + NormalizeDouble(getStopLossSizeShortCurrent()*Point(),Digits);
                   //takeProfit = Bid - NormalizeDouble(getTakeProfitSizeShortCurrent()*Point(),Digits);
                   takeProfit = Bid - NormalizeDouble(getTakeProfitKoefShortCurrent()*(Ask-srLevel_resistance.levelMin),Digits);
                   //takeProfit = Bid - NormalizeDouble(takeProfitKoefShort*(Ask-srLevel_resistance.levelMin),Digits);
                   
-                  // Spocitame, kde mame locknout obchod                  
+                  // Calculating where trade shoud be locked
                   tradeLockProfitAt = generateTradesLockArray(TRADE_SHORT);
                                     
                   if (stopLoss>0 && stopLoss-Bid < stopLevel*Point)
@@ -247,7 +247,7 @@ void OnTick()
                   volume = calculatePositionSizeWrapper(stopLoss, maxUsdLoss);
                   
                   //
-                  // Otevreni obchodu
+                  // Opening a trade
                   //
                   RefreshRates();
                   addedTrade = tradeManagement.addTrade(TRADE_SHORT, volume, Bid, stopLoss, takeProfit, NULL);
@@ -270,11 +270,11 @@ void OnTick()
 
 //
 // ===============================
-// Funkce
+// Functions
 // ===============================
 //
 
-// Zjisti, jestli se jedna o povoleny symbol k obchodovani
+// Find out if the symbol is allowed to trade
 bool isEnabledSymbol()
 {
    string symbol = Symbol();
@@ -287,7 +287,7 @@ bool isEnabledSymbol()
    return(false);
 }
 
-// Zjisti, jestli muze vstoupit do obchodu
+// Find out if we can enter a trade
 bool canEnterATrade(int sentiment, double priceClose, SRLevel *level)
 {
    string symbol = Symbol();
@@ -319,13 +319,13 @@ bool canEnterATrade(int sentiment, double priceClose, SRLevel *level)
             }
          }
          
-         // Kontrola RSI
+         // RSI check
          if (rsiValue>80)
          {
             ret = false;
          }
          
-         // Kontrola EMA
+         // EMA check
          if (iEmaHistory >= iEmaCurrent)
          {
             //ret = false;
@@ -353,13 +353,13 @@ bool canEnterATrade(int sentiment, double priceClose, SRLevel *level)
             }
          }
          
-         // Kontrola RSI
+         // RSI check
          if (rsiValue<20)
          {
             ret = false;
          }
          
-         // Kontrola EMA
+         // EMA check
          if (iEmaHistory <= iEmaCurrent)
          {
             //ret = false;
@@ -370,10 +370,10 @@ bool canEnterATrade(int sentiment, double priceClose, SRLevel *level)
    return(ret);
 }
 
-// Vrati pole objektu, pro uzamykani profitu
+// Returns and array of an object with informations where to lock profit
 CArrayObj *generateTradesLockArray(string tradeType)
-{
-   // Spocitame, kde mame locknout obchod                  
+{           
+   // Calculating where a trade should be locked
    CArrayObj *tradeLockProfitAt = new CArrayObj();                             
    tradeLockProfitAt.Sort();
    
@@ -418,7 +418,7 @@ CArrayObj *generateTradesLockArray(string tradeType)
 }
 
 
-// Zjisti, jestli je jedna o novou svicku
+// Find out if this candle is a new one
 bool isNewBar()
 {
    static datetime barTime = 0;
@@ -433,7 +433,7 @@ bool isNewBar()
    return(isNewBar);
 }
 
-// Zjisti, jestli se jedna  novy den
+// Find out if this day is a new one
 bool isNewDay()
 {
    static string dayTime = "";
@@ -450,20 +450,20 @@ bool isNewDay()
    return(isNewDay);
 }
 
-// Prevod ceny na pipsy
+// Calculate number of pips from price
 int priceToPips(double price)
 {  
    return(price * MathPow(10, MarketInfo(Symbol(), MODE_DIGITS)));
 }
 
-// Prevod pipsu na cenu
+// Calculate number of pips from price
 double pipsToPrice(int pips)
 {  
    return(pips / MathPow(10, MarketInfo(Symbol(), MODE_DIGITS)));
 }
 
 /*
- * Hlavni funkce pro vypocet obchodovane pozice
+ * Main function to calculate position size
  */
 double calculatePositionSizeWrapper(double stopLossPips, double maxUsdLoss)
 {   
@@ -480,8 +480,8 @@ double calculatePositionSizeWrapper(double stopLossPips, double maxUsdLoss)
 
 
 /**
- * Podle SL spocita, jako velkou pozici muzeme obchodovat, aby byla
- * zachovana maximalni mozna ztrata v USD
+ * Calculate position size - the risk for the trade is defined by 
+ * maximal loss in USD
  */
 double calculatePositionSize(double stopLossPips, double maxUsdLoss)
 {  
@@ -526,7 +526,7 @@ double calculatePositionSizeFF(double stopLossPips)
 }
 
 //
-// Funkce pro pocitani velikosti stoplossu na zaklade volatility
+// Functions to calculate stop loss based on volatility
 //
 
 // Long
@@ -573,7 +573,7 @@ int getStopLossSizeShortCurrent()
 
 
 //
-// Funkce pro pocitani velikosti take profitu na zaklade volatility
+// Functions to calculate stop take profit on volatility
 //
 // Long
 int getTakeProfitKoefLongCurrent()
@@ -623,7 +623,7 @@ int getTakeProfitKoefShortCurrent()
 }
 
 
-// Vrati prumernou volatilitu
+// Returns average volatility
 double getAvgVolatility()
 {
    double avgVolatility = 0;
@@ -643,7 +643,7 @@ double getAvgVolatility()
 
 
 /**
- * Zkontroluje jestli je povoleny cas k obchodovani
+ * Checks if the time is available to trade
  */
 bool checkTradingHours()
 {
@@ -665,7 +665,7 @@ bool checkTradingHours()
             isInTradingHours = tradingHours[i][0]<=currentTime && currentTime<=tradingHours[i][1];     
          }
          
-         // Pokud jsou obchodni hodiny, muzeme rovnou vyskocit z cyklu :)
+         // If there are trading hours, we can jump from this cycle :)
          if (isInTradingHours)
          {
             break;
