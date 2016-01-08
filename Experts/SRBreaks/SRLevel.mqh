@@ -11,7 +11,7 @@
 #include "consts.mqh"
 
 //
-// Trida pro jednotlive urovne
+// This class encapsulates one level
 //
 class SRLevel
 {
@@ -51,44 +51,44 @@ class SRLevel
          this.length = 0;
       };
       
-      // Nastavi pocatecni cas SR urovne
+      // Sets the start time of SR level
       void setStartTime(datetime time)
       {
          this.startTime = time;
       }
       
-      // Nastavi koncovy cas SR urovne
+      // Sets the end time of SR level
       void setEndTime(datetime time)
       {
          this.endTime = time;
       }
       
       
-      // Zvysi delku urovne
+      // Increases the length of level
       void increaseLength()
       {
          this.length++;
       }
       
-      //vrati delku urovne
+      // Returns the length of level
       int getLength()
       {
          return(this.length);
       }
       
-      //vrati typ urovne
+      // Returns the type of level
       string getType()
       {
          return(this.type);
       }
       
-      // otestuje, jestli se jedna o zatim nenaplnenou uroven
+      // Checks if this level is still empty
       bool isEmpty()
       {
          return(this.levelMin==0 && this.levelMax==0 ? true : false);
       }
             
-      // Otestuje, jestli je zadana cena v povolenych urovnich
+      // Checks if the specified price is in available levels
       bool isInLevel(double price)
       {         
          if (!this.isEmpty() && this.levelMin<price && price<this.levelMax)
@@ -99,7 +99,7 @@ class SRLevel
          return(false);
       }
       
-      // Vykresli znazorneni SR urovne
+      // Draws a line (SR level)
       bool drawLine(int startIndex, int sentiment)
       {
          SRLevel::SRPoints_support_counter++;
@@ -107,33 +107,33 @@ class SRLevel
          string rectangleIdent = "SRPoint_"+type+"_"+SRLevel::SRPoints_support_counter;
          string sentimentLabel = "SRPointLabel_"+type+"_"+SRLevel::SRPoints_support_counter;
          
-         // Spocitame koncove souradnice obdelniku
+         // Calculating an end coordinates of rectangle
          int endIndex = startIndex + this.length - 1;
          
          int pipsToPriceKoef = MathPow(10, MarketInfo(Symbol(), MODE_DIGITS));
                                              
          //
-         // Vytvoreni obdelniku
+         // Creating a rectangle
          //
          ResetLastError();
          if (!ObjectCreate(0, rectangleIdent, OBJ_RECTANGLE, 0, Time[endIndex], this.levelMin, Time[startIndex], this.levelMax))
          {
-            Print("Nepodarilo se vytvorit obdelnik! Chyba: "+GetLastError());
+            Print("Creating a rectangle failed! Error: "+GetLastError());
             return(false);
          }
          
          if (!ObjectCreate(0, sentimentLabel, OBJ_TEXT, 0, Time[endIndex], this.type==SR_LEVEL_TYPE_SUPPORT ? this.levelMin : this.levelMax))
          {
-            Print("Nepodarilo se vytvorit obdelnik! Chyba: "+GetLastError());
+            Print("Creating a rectangle failed! Error: "+GetLastError());
             return(false);
          }
          
          //
-         // Konfigurace obdelniku
+         // Rectangle configuration
          //
          if (this.type==SR_LEVEL_TYPE_SUPPORT)
          {
-            // Konfigurace pro support
+            // Configuration for support
             ObjectSetInteger(0, rectangleIdent, OBJPROP_COLOR, clrBlue);
             ObjectSetInteger(0, rectangleIdent, OBJPROP_STYLE, STYLE_SOLID);
             ObjectSetInteger(0, rectangleIdent, OBJPROP_WIDTH, 1);
@@ -141,14 +141,14 @@ class SRLevel
          else
          if (this.type==SR_LEVEL_TYPE_RESISTANCE)
          {
-            // Konfigurace pro resistanci
+            // Configuration for resistance
             ObjectSetInteger(0, rectangleIdent, OBJPROP_COLOR, clrRed);
             ObjectSetInteger(0, rectangleIdent, OBJPROP_STYLE, STYLE_SOLID);
             ObjectSetInteger(0, rectangleIdent, OBJPROP_WIDTH, 1);
          }
          
          //
-         // Konfigurace popisku
+         // Label configuration
          //
          ObjectSetString(0, sentimentLabel,OBJPROP_TEXT, "Sentiment = "+sentiment);
          ObjectSetString(0, sentimentLabel,OBJPROP_FONT, "Arial");
@@ -173,8 +173,8 @@ class SRLevel
       } 
       
       //
-      // Vraci informaci o tom, jestli jsou urovne disjunktivni
-      // Ocekava non-empty urovne
+      // Checks if levels are disjunctive.
+      // Expects non empty levels
       //
       static bool areDisjunctive(SRLevel *level1, SRLevel *level2)
       {
