@@ -15,13 +15,13 @@
 
 
 //
-// Trida pro spravu obchodu
+// The class for trade management
 //
 
 class TradeManagement
 {
    private:
-      // Pole otevrenych obchodu
+      // The array of opened trades
       CArrayObj *trades;
             
       int magic;
@@ -29,7 +29,7 @@ class TradeManagement
       int maxSlippage;
       
       //
-      // Otevre novy obchod do Longu
+      // Opens a new long trade
       //
       Trade *addLongTrade(double volume, double price, double stopLoss, double takeProfit, string comment)
       {
@@ -40,7 +40,7 @@ class TradeManagement
          
          if (orderTicket==-1)
          {
-            Print("ERROR - Nepodarilo se vytvorit LONG obchod: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
+            Print("ERROR - LONG trade couldn't be opened: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
          }
          else
          {
@@ -53,7 +53,7 @@ class TradeManagement
       
       
       //
-      // Otevre novy obchod do Shortu
+      // Opens a new short trade
       //
       Trade *addShortTrade(double volume, double price, double stopLoss, double takeProfit, string comment)
       {
@@ -64,7 +64,7 @@ class TradeManagement
          
          if (orderTicket==-1)
          {
-            Print("ERROR - Nepodarilo se vytvorit SHORT obchod: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
+            Print("ERROR - SHORT trade couldn't be opened: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
          }
          else
          {
@@ -76,7 +76,7 @@ class TradeManagement
       }
       
       //
-      // Vrati pozici obchodu podle orderTicket
+      // Returns a trade position by orderTicket
       //
       int searchTradePositionByOrderTicket(int orderTicket)
       {         
@@ -97,7 +97,7 @@ class TradeManagement
       }
       
       //
-      // Zavre dany obchod
+      // Closes the trade
       //
       bool closeTrade(int orderTicketToClose)
       {
@@ -142,7 +142,7 @@ class TradeManagement
       }
       
       //
-      // Vybere obchod, ktery ma dany index
+      // Select a trade by an index
       //
       bool selectTrade(int index)
       {
@@ -157,7 +157,7 @@ class TradeManagement
       }
       
       //
-      // Vrati posledni pridany ticket
+      // Returns last ticket that was added
       //
       int getLastOrderTicket()
       {
@@ -169,7 +169,7 @@ class TradeManagement
       }
       
       //
-      // Vrati cislo ticketu, ktery ma dany indedx
+      // Returns the ticket number with given index
       //
       int getOrderTicket(int index)
       {
@@ -195,7 +195,7 @@ class TradeManagement
       }
       
       //
-      // Otevre novy obchod
+      // Open a new trade
       //
       Trade *addTrade(string tradeType, double volume, double price, double stopLoss, double takeProfit, string comment)
       {
@@ -215,7 +215,7 @@ class TradeManagement
       }
             
       //
-      // Zavre naposledy otevreny obchod
+      // Close trade that was opened last
       //
       bool closeLastTrade()
       {
@@ -230,7 +230,7 @@ class TradeManagement
       }
       
       //
-      // Zjisti, jestli je posledni obchod jeste otevreny
+      // Check if the last opened trade is still opened
       //
       bool isOpenedLastTrade()
       {
@@ -246,7 +246,7 @@ class TradeManagement
       }
             
       //
-      // Vybere naposledy vlozeny obchod
+      // Select the trade that was added last
       //
       bool selectLastTrade()
       {
@@ -259,7 +259,7 @@ class TradeManagement
       }
       
       //
-      // Vrati pocet otevrenych obchodu
+      // Returns the number of opened trades
       //
       int getCountOfTrades()
       {
@@ -267,8 +267,8 @@ class TradeManagement
       }  
       
       //
-      // Najde jiz uzavrene obchody a to takove, ktere skoncili na SL nebo PT
-      // Mela by byt volana pro kazdy tick
+      // Find already closed trades that were closed at stop loss or take profit price
+      // Should be called per each tick
       //
       void checkTrades()
       {
@@ -282,14 +282,14 @@ class TradeManagement
                   
                   if (t.isClosed())
                   {
-                     // Pokud se jedna uz o uzavreny obchod, musime ho smazat
+                     // If the trade is closed, we have to remove it
                      t.onClose();
                      this.trades.Delete(i);
                   }
                   else
                   if (t.isOpened())
                   {
-                     // Pokud se jedna o otevreny obchod, zkontrolujeme ho a provedeme potrebne akce
+                     // If the trade is opened, we check it and make an action if neccessary
                      t.checkTrade();
                   }
                   

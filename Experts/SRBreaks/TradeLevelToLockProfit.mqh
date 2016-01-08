@@ -12,7 +12,7 @@
 #include <Object.mqh>
 
 //
-// Trida zapouzdrujici uroven pro uzamceni obchodu
+// The class encapsulates a lock level 
 //
 
 class TradeLevelToLockProfit : public CObject

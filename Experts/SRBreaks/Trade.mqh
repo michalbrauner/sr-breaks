@@ -17,7 +17,7 @@
 #include <Arrays/ArrayObj.mqh>
 
 //
-// Trida zapouzdrujici objekt obchodu
+// This class encapsulates one trade
 //
 
 class Trade : public CObject
@@ -26,28 +26,28 @@ class Trade : public CObject
         
       int orderTicket;
       
-      // obchody, ktere se pridaly kvuli navysovani pozic v prubehu obchodu
+      // extra trades added in order to increase position size
       CArrayObj *extraAddedTrades;
       
-      // ceny, kde bude dochazet k lockovani obchodu
+      // the price where profit will be locked
       CArrayObj *levelsToLockProfit;
       
-      // Minimalni cena za dobu trvani obchodu
+      // the minimum price during since trade opening time
       double priceMinimum;
       
-      // Maximalni cena za dobu trvani obchodu
+      // the maximum price during since trade opening time
       double priceMaximum;
       
       int maxSlippage;
       
-      // SR uroven, ktera se vztahuje k obchodu
+      // SR level in relation with trade
       SRLevel *level;
       
-      // Pocitadla, jak casto je obchod v zisku a jak casto ve ztrate
+      // counter - how often is trade in a profit or in a loss
       int totalInLoss;
       int totalInProfit;
       
-      // Hodnoty profitu - aktualni a v predchozim ticku
+      // profit values - current and last
       double profitLast;
       double profitCurrent;
       
@@ -55,7 +55,7 @@ class Trade : public CObject
       
       double avgVolatilityAtStart;
             
-      // Zprocesuje obchod na zaklade hodnoty ATR - posouvani PT
+      // Processes the trade with ATR value - moving profit target
       bool processTradeByAtrValue()
       {  
          bool result = true;
@@ -63,8 +63,9 @@ class Trade : public CObject
          int atrHistoryOffset = 3;
          int addPipsByAtr = 150;
                 
-         // zkontrolujeme, jestli nemame posunout PT (pokud roste ATR)
-            
+         //
+         // should we move take profit because of increasing ATR?
+         //   
          double atrCurrent = iATR(Symbol(), 0, 7, 0);
          double atrHistorical = iATR(Symbol(), 0, 7, atrHistoryOffset);
          double newStopLoss = 0, newTakeProfit = 0;
@@ -73,7 +74,7 @@ class Trade : public CObject
          
          
          //
-         // Kontrola zvysujici se volatility
+         // Increasing volatility check
          //
          if (atrCurrent>atrHistorical)
          {  
@@ -82,7 +83,7 @@ class Trade : public CObject
                if (OrderMagicNumber()==this.magic && OrderProfit()>0)
                {
                   //
-                  // Pokud jsme v profitu, natahujeme dale PT (pokud roste ATR)
+                  // If we are in a profit, we move take profit (ATR increases)
                   //                  
                   if (OrderType()==OP_BUY && (OrderTakeProfit()-Bid)<addPipsByAtr*Point )
                   {
@@ -111,7 +112,7 @@ class Trade : public CObject
       }
       
       //
-      // Prida extra BUY obchod 
+      // Adds an extra LONG trade
       //
       Trade *addExtraLongTrade(double volume, double price, double stopLoss, double takeProfit, string comment)
       {
@@ -122,7 +123,7 @@ class Trade : public CObject
          
          if (orderTicket==-1)
          {
-            Print("ERROR - Nepodarilo se vytvorit extra LONG obchod: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
+            Print("ERROR - LONG trade couldn't be added: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
          }
          else
          {
@@ -135,7 +136,7 @@ class Trade : public CObject
             {
                Trade *t = NULL;
                
-               // uzavreme vsechny ostatni extra obchody pro zamceni zisku :)
+               // we'll close all extra trades in order to lock a profit :)
                for (int i=0; i<this.extraAddedTrades.Total(); i++)
                {
                   t = this.extraAddedTrades.At(i);
@@ -153,7 +154,7 @@ class Trade : public CObject
       }
       
       //
-      // Prida extra SHORT obchod 
+      // Adds an extra SHORT trade
       //
       Trade *addExtraShortTrade(double volume, double price, double stopLoss, double takeProfit, string comment)
       {
@@ -164,7 +165,7 @@ class Trade : public CObject
          
          if (orderTicket==-1)
          {
-            Print("ERROR - Nepodarilo se vytvorit extra SHORT obchod: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
+            Print("ERROR - SHORT trade couldn't be added: volume="+volume+", price="+price+", stopLoss="+stopLoss+", takeProfit="+takeProfit+", lastError="+GetLastError());
          }
          else
          {
@@ -177,7 +178,7 @@ class Trade : public CObject
             {
                Trade *t = NULL;
                
-               // uzavreme vsechny ostatni extra obchody pro zamceni zisku :)
+               // we'll close all extra trades in order to lock a profit :)
                for (int i=0; i<this.extraAddedTrades.Total(); i++)
                {
                   t = this.extraAddedTrades.At(i);
@@ -193,7 +194,7 @@ class Trade : public CObject
       }
       
       //
-      // Zkontroluje vsechny extra pridane obchody
+      // We check all extra added trades
       //
       void checkExtraTrades()
       {         
@@ -208,7 +209,7 @@ class Trade : public CObject
             {            
                t = this.extraAddedTrades.At(i);
                
-               // Pokud se obchod zavrel treba na SL nebo rucne, musime ho vymazat z pole
+               // If the trade was closed (by stop loss or manually), we have to remove it from an array
                if (t.isClosed())
                {
                   t.onClose();
@@ -219,7 +220,7 @@ class Trade : public CObject
       }
       
       //
-      // Uzavre vsechny extra pridane obchody
+      // Close all extra added trades
       //
       void closeExtraTrades()
       {
@@ -299,21 +300,21 @@ class Trade : public CObject
          this.levelsToLockProfit = levelsToLockProfit;
       }
       
-      // Funkce volana po uzavreni obchodu
-      // Volat tesne pred smazanim z pole obchodu
+      // The function called after trade closes
+      // Should by called before removing from an array of trades
       void onClose()
       {
-         // Uzavreni vsech extra obchodu
+         // Closing all extra trades
          this.closeExtraTrades();
          
          if (OrderSelect(this.orderTicket,SELECT_BY_TICKET))
          {
             string tradeType = OrderType()==OP_BUY ? "LONG" : "SHORT";
-            Print("CLOSED - Ukoncen "+tradeType+" obchod: orderTicket="+this.orderTicket+", priceMinimum="+this.priceMinimum+", priceMaximum="+this.priceMaximum+", percentInProfit="+this.getPercentTimeInProfit()+", avgVolatility="+this.avgVolatilityAtStart,", profit="+OrderProfit());
+            Print("CLOSED - Trace closed ("+tradeType+" ): orderTicket="+this.orderTicket+", priceMinimum="+this.priceMinimum+", priceMaximum="+this.priceMaximum+", percentInProfit="+this.getPercentTimeInProfit()+", avgVolatility="+this.avgVolatilityAtStart,", profit="+OrderProfit());
          }
       }
       
-      // Uzavre obchod
+      // Close a trade
       bool closeTrade()
       {
          bool closed = false;
@@ -334,8 +335,8 @@ class Trade : public CObject
          return(closed);
       }
       
-      // Zkontroluje obchod a provede pripadne akce (napr. posunuti obchodu apod...)
-      // Mela by byt volana pro kazdy tick
+      // Check a trade and if neccessary, make an action (eg. move stop loss)
+      // Should be called per each tick
       bool checkTrade()
       {
          double newStopLoss = 0, newStopLossExtraTrade = 0;
@@ -351,7 +352,7 @@ class Trade : public CObject
                   this.profitCurrent = OrderProfit();
                   
                   //
-                  // Aktualizace pocitadel jestli je obchod ve ztrate nebo profitu
+                  // Counters update 
                   //
                   if (OrderProfit()>=0)
                   {
@@ -363,7 +364,7 @@ class Trade : public CObject
                   }
                   
                   //
-                  // Zpracovani ukladani minima a maxima
+                  // priceMinimum and priceMaximum update
                   //
                   if (OrderType()==OP_BUY)
                   {
@@ -395,7 +396,7 @@ class Trade : public CObject
                   if (Trade::isNewBar())
                   {                                                   
                      //
-                     // Zpracovani a kontrola RSI
+                     // Processing RSI
                      //
                      double rsiValue = NormalizeDouble(iRSI(Symbol(), PERIOD_D1, 7, PRICE_WEIGHTED, 0), Digits);
                      
@@ -415,14 +416,14 @@ class Trade : public CObject
                      }
                                           
                      //
-                     // Kontrola pole ATR
+                     // Processing ATR
                      //
                      //this.processTradeByAtrValue();
                      
                      if (!this.isClosed())
                      {
                         //
-                        // Zpracovani lockovani profitu
+                        // Processing profit locking
                         //
                         if (this.levelsToLockProfit.Total())
                         {
@@ -463,12 +464,11 @@ class Trade : public CObject
                                                 newStopLossExtraTrade = newStopLossExtraTrade - (stopLevel*Point-(Ask-newStopLossExtraTrade));
                                              }
                                              
-                                             
-                                             // Pridame extra obchod
+                                             // We add an extra trade
                                              RefreshRates();
                                              //this.addExtraLongTrade(OrderLots(), Ask, newStopLossExtraTrade, OrderTakeProfit(), "");
                                              
-                                             // Smazeme lock uroven
+                                             // We remove a lock level
                                              this.levelsToLockProfit.Delete(i);
                                           }
                                        }
@@ -507,12 +507,11 @@ class Trade : public CObject
                                                 newStopLossExtraTrade = newStopLossExtraTrade + (stopLevel*Point-(newStopLossExtraTrade-Bid));
                                              }                                             
                                              
-                                             
-                                             // Pridame extra obchod
+                                             // We add an extra trade
                                              RefreshRates();
                                              //this.addExtraShortTrade(OrderLots(), Bid, newStopLossExtraTrade, OrderTakeProfit(), "");
                                              
-                                             // Smazeme lock uroven
+                                             // We remove a lock level
                                              this.levelsToLockProfit.Delete(i);
                                           }
                                        }
@@ -527,13 +526,13 @@ class Trade : public CObject
             }
          }
          
-         // Kontrola extra obchodu
+         // Extra trade check
          this.checkExtraTrades();
          
          return(false);
       }
             
-      // Vraci, jestli je obchod otevreny
+      // Returns if trade is open
       bool isOpened()
       {
          if (OrderSelect(this.orderTicket,SELECT_BY_TICKET))
@@ -546,7 +545,7 @@ class Trade : public CObject
          return(false);
       }
       
-      // Vraci, jestli je obchod otevreny
+      // Returns if trade is closed
       bool isClosed()
       {
          if (OrderSelect(this.orderTicket,SELECT_BY_TICKET))
@@ -564,7 +563,7 @@ class Trade : public CObject
          return(this.orderTicket);
       }
       
-      // Vrati pocet procent z casu, kdy byl obchod v zisku
+      // Returns a percentage of time in profit
       double getPercentTimeInProfit()
       {
          if (this.totalInLoss>0 || this.totalInProfit>0)
@@ -575,7 +574,7 @@ class Trade : public CObject
          return(0);
       }
       
-      // TODO: Otestovat jeste jestli se tato funkce vola :)
+      // TODO: Check if this function is in use :)
       virtual int Compare(Trade *node, int mode=0)
       { 
          if (node.orderTicket>this.orderTicket)
